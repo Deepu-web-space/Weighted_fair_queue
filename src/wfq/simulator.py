@@ -1,4 +1,6 @@
-"""Step 1: the packet queues.
+
+"""
+Step 1: the packet queues.
 
 Each traffic flow has its own waiting line with one server.
 A packet that arrives when its line is full is lost.
@@ -10,7 +12,6 @@ and the caller gets the values from config/base.yaml.
 """
 
 import math
-
 import numpy as np
 
 
@@ -35,12 +36,13 @@ class PacketQueue:
         self.set_weight(weight)
 
         self.now = 0.0
-        self.waiting = 0                          # packets in line, not being served
-        self.busy = False                         # True while one packet is being served
-        self.service_done_at = math.inf           # when the packet in service finishes
-        self.arrived = 0                          # every packet that tried to join
-        self.served = 0                           # packets that finished service
-        self.lost = 0                             # packets turned away because the line was full
+        self.waiting = 0
+        self.busy = False
+        self.service_done_at = math.inf
+
+        self.arrived = 0
+        self.served = 0
+        self.lost = 0
 
         self.next_arrival = self._draw_gap()
 
@@ -55,8 +57,7 @@ class PacketQueue:
         return self.waiting + (1 if self.busy else 0)
 
     def _gamma(self, mean):
-        # Gamma with squared coefficient of variation = scv:
-        # shape = 1 / scv, scale = scv * mean. The mean stays equal to `mean`.
+        # Gamma with squared coefficient of variation = scv
         shape = 1.0 / self.scv
         scale = self.scv * mean
         return self.rng.gamma(shape, scale)
@@ -75,15 +76,17 @@ class PacketQueue:
         self.service_done_at = at_time + self._draw_service()
 
     def advance(self, until):
-        """Run this queue forward until time `until`."""
+        """Run this queue forward until time until."""
         if until < self.now:
             raise ValueError("cannot move back in time")
 
         while True:
             if self.next_arrival <= self.service_done_at and self.next_arrival <= until:
                 self._arrive(self.next_arrival)
+
             elif self.service_done_at <= until:
                 self._finish(self.service_done_at)
+
             else:
                 break
 
@@ -91,6 +94,7 @@ class PacketQueue:
 
     def _arrive(self, t):
         self.arrived += 1
+
         if self.in_system() < self.capacity:
             if self.busy:
                 self.waiting += 1
@@ -98,29 +102,45 @@ class PacketQueue:
                 self._start_service(t)
         else:
             self.lost += 1
+
         self.next_arrival = t + self._draw_gap()
 
     def _finish(self, t):
         self.served += 1
         self.busy = False
         self.service_done_at = math.inf
+
         if self.waiting > 0:
             self.waiting -= 1
             self._start_service(t)
 
 
 class QueueSystem:
-    """All the flows together. They share one random generator, so one seed controls everything."""
+    """All flows together, with an independent random generator per queue."""
 
     def __init__(self, arrival_rates, weights, capacity, scv, bandwidth, seed):
         if len(arrival_rates) != len(weights):
             raise ValueError("need exactly one weight per queue")
 
-        self.rng = np.random.default_rng(seed)
+        # Create one child seed for each queue
+        seed_sequence = np.random.SeedSequence(seed)
+        child_seeds = seed_sequence.spawn(len(arrival_rates))
+
+        # Give every queue its own random number generator
         self.queues = [
-            PacketQueue(rate, weight, capacity, scv, bandwidth, self.rng)
-            for rate, weight in zip(arrival_rates, weights)
+            PacketQueue(
+                rate,
+                weight,
+                capacity,
+                scv,
+                bandwidth,
+                np.random.default_rng(child_seed)
+            )
+            for rate, weight, child_seed in zip(
+                arrival_rates, weights, child_seeds
+            )
         ]
+
         self.now = 0.0
 
     def set_weights(self, weights):
@@ -128,8 +148,9 @@ class QueueSystem:
             queue.set_weight(weight)
 
     def advance(self, seconds):
-        """Run every queue forward by `seconds`."""
+        """Run every queue forward by seconds."""
         self.now += seconds
+
         for queue in self.queues:
             queue.advance(self.now)
 
