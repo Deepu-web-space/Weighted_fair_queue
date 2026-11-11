@@ -93,3 +93,49 @@ def test_episode_has_100_decisions_and_done_remains_false():
     env.reset(seed=24)
 
     assert env.steps_per_episode == 100
+def test_reset_reproducibility_and_different_seeds():
+    first = make_env()
+    initial_a = first.reset(seed=25)
+    state_a, reward_a, _, _ = first.step(EQUAL)
+
+    second = make_env()
+    initial_b = second.reset(seed=25)
+    state_b, reward_b, _, _ = second.step(EQUAL)
+
+    assert np.array_equal(initial_a, initial_b)
+    assert np.array_equal(state_a, state_b)
+    assert reward_a == reward_b
+
+    third = make_env()
+    third.reset(seed=26)
+    state_c, reward_c, _, _ = third.step(EQUAL)
+
+    assert (
+        not np.array_equal(state_a, state_c)
+        or reward_a != reward_c
+    )
+
+
+def test_packet_balance_holds_for_every_queue_over_an_episode():
+    env = make_env()
+    env.reset(seed=27)
+
+    for _ in range(env.steps_per_episode):
+        env.step(EQUAL)
+
+    for q in env.system.queues:
+        assert q.arrived == q.served + q.lost + q.in_system()
+
+
+def test_overloaded_queues_lose_packets_but_light_queue_does_not():
+    env = make_env()
+    env.reset(seed=2)
+
+    for _ in range(env.steps_per_episode):
+        env.step(EQUAL)
+
+    for index in (1, 2, 5):
+        assert env.system.queues[index].lost > 0
+
+    assert env.system.queues[0].lost == 0
+
