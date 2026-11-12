@@ -27,10 +27,13 @@ training:
   min_concentration: 1.0        # added to actor output so the Dirichlet is never spiky; decision A detail
   seeds_final: [0, 1, 2, 3, 4]
   seeds_tuning: [100, 101, 102, 103, 104]
+  episode_seed_stride: 100000   # run_seed * stride + episode gives each episode's seed
+
 
 ewc:
   lambda: 2271                  # paper, 8 queues (12 queues: 2275)
   fisher_refresh_episodes: 30
+  fisher_batches: 5             # DECISION D: mini-batches averaged to estimate the Fisher values
   mode: paper                   # paper or task_anchored
 
 switch_test:

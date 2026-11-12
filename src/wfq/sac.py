@@ -1,12 +1,17 @@
-"""SAC agent without EWC (Day 3, Block 2).
+"""SAC agent, with an optional EWC memory penalty (Day 3, Blocks 2 and 3).
 
-One update does three things:
+One update does four things:
 1. Critics learn to predict the target value y.
 2. The actor learns to choose weights that score well under the critics,
    with an entropy bonus that keeps its choices varied.
-3. Target critics move slowly toward the critics (soft update).
+3. If EWC is on, both losses get a penalty for moving important weights.
+4. Target critics move slowly toward the critics (soft update).
 
-Every number comes from config/base.yaml. Nothing is typed in here.
+EWC is off when no ewc_config is given, or when its lambda is 0. In that
+case no extra random numbers are drawn, so the run matches plain SAC exactly.
+
+Every number comes from config/base.yaml. Nothing is typed in here, except
+the plain structure of the formulas (for example the 1.0 in 1.0 - done).
 """
 
 import copy
@@ -15,12 +20,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from wfq.ewc import EWCAnchor
 from wfq.networks import Actor, Critic
 from wfq.replay import ReplayBuffer
 
 
 class SACAgent:
-    def __init__(self, sim_config, train_config, seed):
+    def __init__(self, sim_config, train_config, seed, ewc_config=None):
         n = sim_config["n_queues"]
         hidden = train_config["hidden_units"]
 
@@ -51,12 +57,34 @@ class SACAgent:
         self.actor_opt = torch.optim.Adam(
             self.actor.parameters(), lr=train_config["lr_actor"]
         )
-        critic_params = list(self.critic1.parameters()) + list(self.critic2.parameters())
         self.critic_opt = torch.optim.Adam(
-            critic_params, lr=train_config["lr_critic"]
+            self._critic_params(), lr=train_config["lr_critic"]
         )
 
         self.buffer = ReplayBuffer(train_config["replay_size"], n, n)
+
+        # EWC is on only when a config is given and lambda is above zero.
+        self.ewc_on = ewc_config is not None and ewc_config["lambda"] > 0
+        if self.ewc_on:
+            self.fisher_batches = ewc_config["fisher_batches"]
+            self.ewc_actor = EWCAnchor(ewc_config["lambda"])
+            self.ewc_critic = EWCAnchor(ewc_config["lambda"])
+
+    def _critic_params(self):
+        return list(self.critic1.parameters()) + list(self.critic2.parameters())
+
+    def _ready(self):
+        return self.buffer.size >= max(self.warmup_steps, self.batch_size)
+
+    def _batch(self):
+        s, a, r, s2, d = self.buffer.sample(self.batch_size, self.rng)
+        return (
+            torch.as_tensor(s),
+            torch.as_tensor(a),
+            torch.as_tensor(r),
+            torch.as_tensor(s2),
+            torch.as_tensor(d),
+        )
 
     def _floor(self, w):
         """Keep every weight above min_weight, then rescale to sum to 1.
@@ -80,21 +108,12 @@ class SACAgent:
     def store(self, state, action, reward, next_state, done):
         self.buffer.add(state, action, reward, next_state, done)
 
-    def update(self):
-        """One gradient step. Returns None during warm-up, else the losses."""
-        needed = max(self.warmup_steps, self.batch_size)
-        if self.buffer.size < needed:
-            return None
+    def _critic_loss(self, batch):
+        """Base critic loss (without EWC): both critics move toward y."""
+        s, a, r, s2, d = batch
 
-        s, a, r, s2, d = self.buffer.sample(self.batch_size, self.rng)
-        s = torch.as_tensor(s)
-        a = torch.as_tensor(a)
-        r = torch.as_tensor(r)
-        s2 = torch.as_tensor(s2)
-        d = torch.as_tensor(d)
-
-        # 1. Critic target: reward plus the discounted future value,
-        #    using the smaller of the two target critics and the entropy bonus.
+        # Critic target: reward plus the discounted future value,
+        # using the smaller of the two target critics and the entropy bonus.
         with torch.no_grad():
             dist2 = self.actor(s2)
             a2 = self._floor(dist2.rsample())
@@ -102,35 +121,84 @@ class SACAgent:
             q_next = torch.min(self.target1(s2, a2), self.target2(s2, a2))
             y = r + self.gamma * (1.0 - d) * (q_next - self.alpha * logp2)
 
-        # 2. Critic loss: both critics move toward the same target.
         q1 = self.critic1(s, a)
         q2 = self.critic2(s, a)
-        critic_loss = F.mse_loss(q1, y) + F.mse_loss(q2, y)
-        self.critic_opt.zero_grad()
-        critic_loss.backward()
-        self.critic_opt.step()
+        return F.mse_loss(q1, y) + F.mse_loss(q2, y)
 
-        # 3. Actor loss: prefer weights the critics score highly,
-        #    and keep some randomness (the alpha * log-prob term).
-        #    Gradients reach the critics too, but they are cleared
-        #    before the next critic step.
+    def _actor_loss(self, s):
+        """Base actor loss (without EWC): prefer weights the critics score highly."""
         dist = self.actor(s)
         a_new = self._floor(dist.rsample())
         logp = dist.log_prob(a_new).unsqueeze(-1)
         q_new = torch.min(self.critic1(s, a_new), self.critic2(s, a_new))
-        actor_loss = (self.alpha * logp - q_new).mean()
+        return (self.alpha * logp - q_new).mean()
+
+    def update(self):
+        """One gradient step. Returns None during warm-up, else the losses."""
+        if not self._ready():
+            return None
+
+        batch = self._batch()
+        s = batch[0]
+
+        # 1. Critics: base loss plus the EWC penalty when EWC is on.
+        critic_loss = self._critic_loss(batch)
+        if self.ewc_on:
+            critic_penalty = self.ewc_critic.penalty(self._critic_params())
+            total = critic_loss + critic_penalty
+        else:
+            critic_penalty = torch.zeros(())
+            total = critic_loss
+        self.critic_opt.zero_grad()
+        total.backward()
+        self.critic_opt.step()
+
+        # 2. Actor: base loss plus the EWC penalty when EWC is on.
+        #    Gradients reach the critics too, but they are cleared
+        #    before the next critic step.
+        actor_loss = self._actor_loss(s)
+        if self.ewc_on:
+            actor_penalty = self.ewc_actor.penalty(list(self.actor.parameters()))
+            total = actor_loss + actor_penalty
+        else:
+            actor_penalty = torch.zeros(())
+            total = actor_loss
         self.actor_opt.zero_grad()
-        actor_loss.backward()
+        total.backward()
         self.actor_opt.step()
 
-        # 4. Move the target critics slowly toward the critics.
+        # 3. Move the target critics slowly toward the critics.
         self._soft_update(self.critic1, self.target1)
         self._soft_update(self.critic2, self.target2)
 
         return {
             "critic_loss": float(critic_loss.item()),
             "actor_loss": float(actor_loss.item()),
+            "critic_penalty": float(critic_penalty.item()),
+            "actor_penalty": float(actor_penalty.item()),
         }
+
+    def refresh_ewc(self):
+        """Save new Fisher values and a new anchor for both networks.
+
+        Does nothing when EWC is off, so lambda 0 draws no extra random numbers.
+        """
+        if not self.ewc_on:
+            return
+        if not self._ready():
+            raise RuntimeError(
+                "Too few transitions for a Fisher refresh; wait until warm-up ends"
+            )
+        self.ewc_critic.snapshot(
+            self._critic_params(),
+            lambda: self._critic_loss(self._batch()),
+            self.fisher_batches,
+        )
+        self.ewc_actor.snapshot(
+            self.actor.parameters(),
+            lambda: self._actor_loss(self._batch()[0]),
+            self.fisher_batches,
+        )
 
     def _soft_update(self, source, target):
         """target = tau * source + (1 - tau) * target."""
