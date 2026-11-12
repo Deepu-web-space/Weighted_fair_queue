@@ -14,6 +14,7 @@ simulator:
 training:
   episodes: 1000
   warmup_steps: 1000            # DECISION B: updates start after 10 episodes
+  sanity_window_episodes: 10    # block size for the learning-curve check (Block 4)
   batch_size: 128
   replay_size: 10000
   gamma: 0.99
