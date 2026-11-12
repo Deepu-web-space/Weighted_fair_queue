@@ -83,3 +83,22 @@ def test_proportional_allocation_gives_equal_service_load():
         load = rate / service_rate
 
         assert load == pytest.approx(expected_load)
+
+
+def test_invalid_rates_refused():
+    # Validation tests for zero, negative, or empty inputs.
+
+    with pytest.raises(ValueError):
+        proportional_weights([])
+
+    with pytest.raises(ValueError):
+        proportional_weights([-0.1, 0.2, 0.3])
+
+    with pytest.raises(ValueError):
+        proportional_weights([0.0, 0.2, 0.3])
+
+    with pytest.raises(ValueError):
+        equal_weights(0)
+
+    with pytest.raises(ValueError):
+        equal_weights(-5)

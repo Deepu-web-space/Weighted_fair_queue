@@ -1,0 +1,35 @@
+# Settings for WFQ continual-DRL. No number goes in the code; every value is read from here.
+
+simulator:
+  n_queues: 8
+  arrival_rates: [0.03, 0.16, 0.20, 0.10, 0.08, 0.15, 0.06, 0.05]  # packets/s, paper Experiment 1
+  total_bandwidth: 1.0          # packets/s (paper: 1 byte/s, 1 byte per packet)
+  scv: 0.8                      # squared coefficient of variation, gamma times
+  queue_capacity: 32            # DECISION D2: packets per queue, paper value not confirmed
+  #decision_interval_s: 20       # agent acts every 20 s
+  #episode_length_s: 2000        # 100 decisions per episode
+  decision_interval_s: 20
+  episode_length_s: 2000
+
+training:
+  episodes: 1000
+  warmup_steps: 1000            # DECISION B: updates start after 10 episodes
+  batch_size: 128
+  replay_size: 10000
+  gamma: 0.99
+  tau: 0.01
+  alpha: 0.2                    # entropy weight
+  lr_actor: 0.0001
+  lr_critic: 0.001
+  hidden_units: 64
+  seeds_final: [0, 1, 2, 3, 4]
+  seeds_tuning: [100, 101, 102, 103, 104]
+
+ewc:
+  lambda: 2271                  # paper, 8 queues (12 queues: 2275)
+  fisher_refresh_episodes: 30
+  mode: paper                   # paper or task_anchored
+
+switch_test:
+  phase_a_episodes: 500
+  phase_b_episodes: 500
