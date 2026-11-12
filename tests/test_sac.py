@@ -13,7 +13,7 @@ import torch
 import yaml
 
 from wfq.env import WFQEnv
-from wfq.Sac import SACAgent
+from wfq.sac import SACAgent
 
 
 ROOT = Path(__file__).resolve().parents[1]

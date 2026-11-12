@@ -9,7 +9,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from wfq.Networks import Actor, Critic
+from wfq.networks import Actor, Critic
 
 
 ROOT = Path(__file__).resolve().parents[1]

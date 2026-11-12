@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import yaml
 
-from wfq.Replay import ReplayBuffer
+from wfq.replay import ReplayBuffer
 
 
 ROOT = Path(__file__).resolve().parents[1]
