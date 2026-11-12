@@ -79,3 +79,9 @@ def test_tuning_and_final_seeds_do_not_overlap():
     assert final == {0, 1, 2, 3, 4}
     assert tuning == {100, 101, 102, 103, 104}
     assert final.isdisjoint(tuning)
+
+
+
+def test_torch_threads_is_set_for_parallel_runs():
+    # Three or four runs at once, each with a small thread count.
+    assert 1 <= TRAIN["torch_threads"] <= 4
