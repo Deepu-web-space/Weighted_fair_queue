@@ -40,3 +40,8 @@ ewc:
 switch_test:
   phase_a_episodes: 500
   phase_b_episodes: 500
+  # DECISION J: phase B traffic is phase A with the queue order reversed (same total load, 0.83)
+  phase_b_arrival_rates: [0.05, 0.06, 0.15, 0.08, 0.10, 0.20, 0.16, 0.03]
+  eval_episodes: 5              # deterministic episodes per checkpoint, fixed evaluation seeds
+  eval_seed_base: 900000000     # evaluation seeds start here, far from training seeds
+  eval_seed_stride: 100         # per run seed; must be at least eval_episodes
