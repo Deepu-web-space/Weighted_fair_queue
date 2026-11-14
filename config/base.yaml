@@ -5,7 +5,7 @@ simulator:
   arrival_rates: [0.03, 0.16, 0.20, 0.10, 0.08, 0.15, 0.06, 0.05]  # packets/s, paper Experiment 1
   total_bandwidth: 1.0          # packets/s (paper: 1 byte/s, 1 byte per packet)
   scv: 0.8                      # squared coefficient of variation, gamma times
-  queue_capacity: 32            # DECISION D2: packets per queue, paper value not confirmed
+  queue_capacity: 32            # DECISION H: packets per queue, not in the paper
   #decision_interval_s: 20       # agent acts every 20 s
   #episode_length_s: 2000        # 100 decisions per episode
   decision_interval_s: 20
