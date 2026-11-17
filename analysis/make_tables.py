@@ -159,12 +159,21 @@ def build_baselines_table(baselines_df, learner_df):
         for method, bdf in baselines_df.groupby("method"):
             # Aggregate over all episodes and seeds
             rewards = bdf["mean_reward"].dropna()
-            losses = bdf["loss_rate"].dropna() if "loss_rate" in bdf.columns else pd.Series(dtype=float)
+            #losses = bdf["loss_rate"].dropna() if "loss_rate" in bdf.columns else pd.Series(dtype=float)
+            #jain = bdf["jains_index"].dropna() if "jains_index" in bdf.columns else pd.Series(dtype=float)
+            total_lost = bdf["total_lost"].sum()
+            total_arrived = bdf["total_arrived"].sum()
+
+            loss_rate_pct = (
+                (total_lost / total_arrived) * 100
+                if total_arrived > 0 else float("nan")
+                )
+
             jain = bdf["jains_index"].dropna() if "jains_index" in bdf.columns else pd.Series(dtype=float)
             rows.append({
                 "Method": f"Baseline: {method}",
                 "Mean Reward": f"{rewards.mean():.3f} +/- {rewards.std(ddof=1):.3f}" if len(rewards) > 1 else f"{rewards.mean():.3f}",
-                "Loss Rate %": f"{losses.mean():.3f}%" if not losses.empty else "N/A",
+                "Loss Rate %": f"{loss_rate_pct:.4f}%" if total_arrived > 0 else "N/A",
                 "Jain's Index": f"{jain.mean():.4f}" if not jain.empty else "N/A",
                 "Type": "Static baseline",
             })
