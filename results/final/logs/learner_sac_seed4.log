@@ -1,3 +1,0 @@
-$ C:\Projects\wfq-continual-drl\.venv\Scripts\python.exe C:\Projects\wfq-continual-drl\experiments\run_learner.py --method sac --seed 4 --output C:\Projects\wfq-continual-drl\results\final
-Starting sac run: seed=4, episodes=1000, output=C:\Projects\wfq-continual-drl\results\final\sac_seed4.csv
-Finished sac run: wrote C:\Projects\wfq-continual-drl\results\final\sac_seed4.csv
