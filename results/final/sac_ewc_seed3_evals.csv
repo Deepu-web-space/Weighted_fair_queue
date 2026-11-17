@@ -1,0 +1,16 @@
+checkpoint,traffic,eval_index,mean_reward
+end_A,A,0,-17.20375
+end_A,A,1,-22.125
+end_A,A,2,-20.28375
+end_A,A,3,-18.9875
+end_A,A,4,-20.92375
+end_B,A,0,-21.07375
+end_B,A,1,-17.3725
+end_B,A,2,-18.88625
+end_B,A,3,-16.99875
+end_B,A,4,-20.89875
+end_B,B,0,-28.45625
+end_B,B,1,-29.765
+end_B,B,2,-29.33875
+end_B,B,3,-29.6375
+end_B,B,4,-26.87375

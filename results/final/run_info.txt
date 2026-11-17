@@ -1,0 +1,6 @@
+started: 2026-11-16T18:53:37
+commit: d183fd8
+mode: full
+parallel: 2
+python: 3.10.11
+jobs: 25

@@ -1,0 +1,5 @@
+$ C:\Projects\wfq-continual-drl\.venv\Scripts\python.exe C:\Projects\wfq-continual-drl\experiments\run_switch.py --method sac --seed 0 --output C:\Projects\wfq-continual-drl\results\final
+Starting sac switch test: seed=0, phase A=500, phase B=500
+Refresh episodes: []
+Wrote C:\Projects\wfq-continual-drl\results\final\sac_seed0_episodes.csv
+Wrote C:\Projects\wfq-continual-drl\results\final\sac_seed0_evals.csv

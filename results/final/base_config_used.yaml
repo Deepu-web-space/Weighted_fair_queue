@@ -1,0 +1,47 @@
+# Settings for WFQ continual-DRL. No number goes in the code; every value is read from here.
+
+simulator:
+  n_queues: 8
+  arrival_rates: [0.03, 0.16, 0.20, 0.10, 0.08, 0.15, 0.06, 0.05]  # packets/s, paper Experiment 1
+  total_bandwidth: 1.0          # packets/s (paper: 1 byte/s, 1 byte per packet)
+  scv: 0.8                      # squared coefficient of variation, gamma times
+  queue_capacity: 32            # DECISION H: packets per queue, not in the paper
+  #decision_interval_s: 20       # agent acts every 20 s
+  #episode_length_s: 2000        # 100 decisions per episode
+  decision_interval_s: 20
+  episode_length_s: 2000
+
+training:
+  episodes: 1000
+  warmup_steps: 1000            # DECISION B: updates start after 10 episodes
+  sanity_window_episodes: 10    # block size for the learning-curve check (Block 4)
+  batch_size: 128
+  replay_size: 10000
+  gamma: 0.99
+  tau: 0.01
+  alpha: 0.2                    # entropy weight
+  lr_actor: 0.0001
+  lr_critic: 0.001
+  hidden_units: 64
+  min_weight: 1.0e-6            # floor so no weight is exactly 0 (env refuses 0); numerical, not a paper value
+  torch_threads: 2              # CPU threads per run; 3 or 4 runs at once on the laptop, 2 threads each
+  min_concentration: 1.0        # added to actor output so the Dirichlet is never spiky; decision A detail
+  seeds_final: [0, 1, 2, 3, 4]
+  seeds_tuning: [100, 101, 102, 103, 104]
+  episode_seed_stride: 100000   # run_seed * stride + episode gives each episode's seed
+
+
+ewc:
+  lambda: 2271                  # paper, 8 queues (12 queues: 2275)
+  fisher_refresh_episodes: 30
+  fisher_batches: 5             # DECISION D: mini-batches averaged to estimate the Fisher values
+  mode: paper                   # paper or task_anchored
+
+switch_test:
+  phase_a_episodes: 500
+  phase_b_episodes: 500
+  # DECISION J: phase B traffic is phase A with the queue order reversed (same total load, 0.83)
+  phase_b_arrival_rates: [0.05, 0.06, 0.15, 0.08, 0.10, 0.20, 0.16, 0.03]
+  eval_episodes: 5              # deterministic episodes per checkpoint, fixed evaluation seeds
+  eval_seed_base: 900000000     # evaluation seeds start here, far from training seeds
+  eval_seed_stride: 100         # per run seed; must be at least eval_episodes

@@ -1,0 +1,5 @@
+$ C:\Projects\wfq-continual-drl\.venv\Scripts\python.exe C:\Projects\wfq-continual-drl\experiments\run_switch.py --method sac_ewc --seed 2 --output C:\Projects\wfq-continual-drl\results\final
+Starting sac_ewc switch test: seed=2, phase A=500, phase B=500
+Refresh episodes: [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570, 600, 630, 660, 690, 720, 750, 780, 810, 840, 870, 900, 930, 960, 990]
+Wrote C:\Projects\wfq-continual-drl\results\final\sac_ewc_seed2_episodes.csv
+Wrote C:\Projects\wfq-continual-drl\results\final\sac_ewc_seed2_evals.csv

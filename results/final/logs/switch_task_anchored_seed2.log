@@ -1,0 +1,5 @@
+$ C:\Projects\wfq-continual-drl\.venv\Scripts\python.exe C:\Projects\wfq-continual-drl\experiments\run_switch.py --method task_anchored --seed 2 --output C:\Projects\wfq-continual-drl\results\final
+Starting task_anchored switch test: seed=2, phase A=500, phase B=500
+Refresh episodes: [500]
+Wrote C:\Projects\wfq-continual-drl\results\final\task_anchored_seed2_episodes.csv
+Wrote C:\Projects\wfq-continual-drl\results\final\task_anchored_seed2_evals.csv
